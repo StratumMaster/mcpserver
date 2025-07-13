@@ -1,14 +1,7 @@
-from typing import Optional
+from fastmcp import FastMCP
 
-from fastapi import FastAPI
+mcp = FastMCP("My MCP Server")
 
-app = FastAPI()
-
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Optional[str] = None):
-    return {"item_id": item_id, "q": q}
+@mcp.tool
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
