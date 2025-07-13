@@ -33,7 +33,7 @@ def analyze(data: str) -> dict:
 async def sse_test(request):
     return JSONResponse({"status": "SSE works"})
 
-@sse.route("/mcp-sse")
+@sse_app.route("/mcp-sse")
 async def redirect_sse(request):
     return RedirectResponse(url="/mcp-sse/")
 
