@@ -1,6 +1,5 @@
 fastapi[all]
 fastmcp
 httpx
-contextlib
 jsonschema
 
