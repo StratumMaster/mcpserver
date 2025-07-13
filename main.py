@@ -5,6 +5,7 @@ from starlette.routing import Mount, Route
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from dynamic_tools import register_tools_from_remote_json_async
+from contextlib import asynccontextmanager
 
 # Create your FastMCP server
 mcp = FastMCP("MyServer")
