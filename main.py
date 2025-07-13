@@ -4,9 +4,13 @@ from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
+from dynamic_tools import register_tools_from_remote_json_async
 
 # Create your FastMCP server
 mcp = FastMCP("MyServer")
+
+tool_schema_url = "https://yourserver.com/tool-schemas"
+await register_tools_from_remote_json_async(tool_schema_url, mcp)
 
 # Create the ASGI app for MCP with SSE transport
 mcp_app = mcp.http_app(path='/mcp', transport="sse")
