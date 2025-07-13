@@ -1,44 +1,36 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 from fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
-# 1. FastAPI app with your normal routes
-app = FastAPI()
+# Step 1: Define your FastAPI app with normal routes
+fastapi_app = FastAPI(title="My API", version="1.0.0")
 
-@app.get("/")
-async def root():
-    return {"message": "FastMCP + FastAPI running"}
+@fastapi_app.get("/items", tags=["items"], operation_id="list_items")
+def list_items():
+    return [{"id": 1, "name": "Item 1"}, {"id": 2, "name": "Item 2"}]
 
-@app.get("/health")
-async def health_check():
-    return JSONResponse({"status": "healthy"})
+@fastapi_app.get("/items/{item_id}", tags=["items"], operation_id="get_item")
+def get_item(item_id: int):
+    return {"id": item_id, "name": f"Item {item_id}"}
 
-# 2. Create MCP with SSE enabled, using FastAPI OpenAPI spec
-mcp_sse = FastMCP(
-    openapi_spec=app.openapi(),
-    path="/mcp",
-    transport="sse",    # <-- streaming enabled here
-)
+@fastapi_app.post("/items", tags=["items"], operation_id="create_item")
+def create_item(name: str):
+    return {"id": 3, "name": name}
 
-# 3. Define MCP tools on mcp_sse instance if needed
-@mcp_sse.tool
-def hello(name: str) -> str:
-    return f"Hello, {name}!"
+# Step 2: Create FastMCP from FastAPI app
+mcp = FastMCP.from_fastapi(app=fastapi_app)
 
-@mcp_sse.tool
-def analyze(data: str) -> dict:
-    return {"result": f"Analyzed: {data}"}
+# Step 3: Create MCP ASGI apps (REST and SSE)
+mcp_http_app = mcp.http_app()
+mcp_sse_app = mcp.http_app(transport="sse")
 
-# 4. Create Starlette app mounting your FastAPI routes AND MCP SSE app at /mcp
-starlette_app = Starlette(
+# Step 4: Combine them with Starlette
+app = Starlette(
     routes=[
-        Mount("/", app=app),                # your FastAPI app routes
-        Mount("/mcp", app=mcp_sse.http_app()),  # MCP with SSE streaming at /mcp
+        Mount("/", app=fastapi_app),        # Your native FastAPI app
+        Mount("/mcp", app=mcp_http_app),    # REST/stream-compatible MCP
+        Mount("/mcp-sse", app=mcp_sse_app), # Explicit SSE transport
     ],
-    lifespan=mcp_sse.http_app().lifespan,
+    lifespan=mcp_http_app.lifespan,
 )
-
-# 5. Export starlette_app as app for uvicorn
-app = starlette_app
