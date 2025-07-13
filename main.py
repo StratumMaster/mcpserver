@@ -1,23 +1,25 @@
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
-from starlette.applications import Starlette
-from starlette.responses import JSONResponse
-from starlette.routing import Mount, Route
-from starlette.requests import Request
 
-# Create your FastMCP server with both OpenAPI and SSE support
-mcp = FastMCP("MyServer")
-mcp_app = mcp.http_app(path='/mcp', transport="sse")
+# Create FastAPI app
+app = FastAPI(title="My MCP FastAPI Server", version="1.0.0")
 
-# Custom health check endpoint
-@mcp.custom_route("/health", methods=["GET"])
+# Root route
+@app.get("/")
+async def root():
+    return {"message": "FastMCP server is running"}
+
+# Custom health check route
+@app.get("/health")
 async def health_check(request: Request):
     return JSONResponse({"status": "healthy"})
 
-# Define root Starlette route (optional)
-async def root(request):
-    return JSONResponse({"message": "FastMCP server is running"})
+# Create MCP instance from FastAPI app
+mcp = FastMCP.from_fastapi(app=app, transport="sse", path="/mcp")
 
-# Register FastMCP tools
+# Define MCP tools directly on mcp instance
+
 @mcp.tool
 def hello(name: str) -> str:
     return f"Hello, {name}!"
@@ -26,11 +28,5 @@ def hello(name: str) -> str:
 def analyze(data: str) -> dict:
     return {"result": f"Analyzed: {data}"}
 
-# Build final Starlette app
-app = Starlette(
-    routes=[
-        Route("/", endpoint=root),
-        Mount("/mcp-server", app=mcp_app),  # ✅ One endpoint for HTTP + SSE + OpenAPI
-    ],
-    lifespan=mcp_app.lifespan,
-)
+if __name__ == "__main__":
+    mcp.run()  # Runs standalone server (like uvicorn)
