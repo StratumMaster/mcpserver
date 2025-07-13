@@ -34,7 +34,7 @@ app = Starlette(
     routes=[
         Route("/", endpoint=root),
         Mount("/mcp-server", app=mcp_app),
-        Mount("/mcp-sse", app=sse_app),  # <- SSE endpoint
+        Mount("/mcp-sse/", app=sse_app),  # <- SSE endpoint
     ],
     lifespan=mcp_app.lifespan,
 )
