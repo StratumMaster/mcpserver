@@ -46,4 +46,28 @@ async def register_tools_from_remote_json_async(tool_definitions_url: str, mcp):
                     if val is None:
                         return {"error": f"Missing required parameter: {param}"}
                     try:
-                        input_payload[param] = parse_value(val, para
+                        input_payload[param] = parse_value(val, param_type)
+                    except Exception as e:
+                        return {"error": f"Invalid value for {param}: {e}"}
+
+                try:
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.post(endpoint_url, json=input_payload)
+                        resp.raise_for_status()
+                        result = resp.json()
+
+                    if output_schema_dict:
+                        try:
+                            validate(instance=result, schema=output_schema_dict)
+                        except ValidationError as e:
+                            return {"error": "Output schema validation failed", "details": str(e)}
+
+                    return result
+
+                except httpx.HTTPError as e:
+                    return {"error": "HTTP request failed", "details": str(e)}
+
+            return tool_fn
+
+        tool_fn = make_tool_fn(endpoint, input_schema, output_schema)
+        mcp.tool(name=name, description=description, tags=tags)(tool_fn)
