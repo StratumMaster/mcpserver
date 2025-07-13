@@ -8,9 +8,11 @@ mcp = FastMCP("MyServer")
 # Create the ASGI app
 mcp_app = mcp.http_app(path='/mcp')
 
-# Create nested application structure
-inner_app = Starlette(routes=[Mount("/inner", app=mcp_app)])
+# Create a Starlette app and mount the MCP server
 app = Starlette(
-    routes=[Mount("/outer", app=inner_app)],
+    routes=[
+        Mount("/mcp-server", app=mcp_app),
+        # Add other routes as needed
+    ],
     lifespan=mcp_app.lifespan,
 )
