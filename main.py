@@ -40,15 +40,14 @@ async def sse_health(request):
     return JSONResponse({"status": "SSE HealthCheck works"})
 
 # Define Dynamic MCP tools
-tool_schema_url = "https://my-json-server.typicode.com/StratumMaster/samplejson/config"
-@asynccontextmanager
-async def combined_lifespan(app):
-    async with mcp_app.lifespan(app):
-        print("🔄 Registering dynamic tools...")
+@mcp.custom_route("/reload-tools", methods=["POST"])
+async def reload_tools(request: Request):
+    try:
+        tool_schema_url = "https://my-json-server.typicode.com/StratumMaster/samplejson/config"
         await register_tools_from_remote_json_async(tool_schema_url, mcp)
-        print("✅ Dynamic tools registered.")
-        yield
-        print("🛑 Server shutdown.")
+        return JSONResponse({"status": "success", "message": "Tools reloaded."})
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
     
 # Create Starlette app with root and MCP mount
 app = Starlette(
@@ -56,5 +55,5 @@ app = Starlette(
         Route("/", endpoint=root),
         Mount("/mcp-server", app=mcp_app),  # <-- MCP server mounted here
     ],
-    lifespan=combined_lifespan,
+    lifespan=mcp_app.lifespan,
 )
