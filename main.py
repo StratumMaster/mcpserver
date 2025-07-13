@@ -24,6 +24,10 @@ async def root(request):
 def hello(name: str) -> str:
     return f"Hello, {name}!"
 
+@mcp.tool
+def analyze(data: str) -> dict:
+    return {"result": f"Analyzed: {data}"}
+
 # Create a Starlette app with root route and MCP mount
 app = Starlette(
     routes=[
