@@ -9,6 +9,10 @@ mcp = FastMCP("MyServer")
 # Create the ASGI app for MCP
 mcp_app = mcp.http_app(path='/mcp')
 
+@mcp.tool
+def hello(name: str) -> str:
+    return f"Hello, {name}!"
+
 # Define a root route handler
 async def root(request):
     return JSONResponse({"message": "FastMCP server is running"})
@@ -16,6 +20,9 @@ async def root(request):
 @mcp.custom_route("/health", methods=["GET"])
 async def health_check(request: Request):
     return JSONResponse({"status": "healthy"})
+
+# For legacy SSE transport (deprecated)
+sse_app = mcp.http_app(transport="sse")
 
 # Create a Starlette app with root route and MCP mount
 app = Starlette(
