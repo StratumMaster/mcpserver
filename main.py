@@ -13,6 +13,10 @@ mcp_app = mcp.http_app(path='/mcp')
 async def root(request):
     return JSONResponse({"message": "FastMCP server is running"})
 
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Request):
+    return JSONResponse({"status": "healthy"})
+
 # Create a Starlette app with root route and MCP mount
 app = Starlette(
     routes=[
