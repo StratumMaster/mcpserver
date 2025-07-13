@@ -1,6 +1,8 @@
+from fastapi import FastAPI
 from fastmcp import FastMCP
 
-mcp = FastMCP("My MCP Server")
+app = FastAPI(title="My MCP Server", version="1.0.0")
+mcp = FastMCP.from_fastapi(app=app)
 
 @mcp.tool
 def greet(name: str) -> str:
