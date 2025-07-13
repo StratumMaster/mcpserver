@@ -2,6 +2,7 @@ from fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
+from starlette.requests import Request
 
 # Create your FastMCP server
 mcp = FastMCP("MyServer")
