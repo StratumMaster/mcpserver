@@ -29,6 +29,14 @@ def hello(name: str) -> str:
 def analyze(data: str) -> dict:
     return {"result": f"Analyzed: {data}"}
 
+@sse_app.route("/test")
+async def sse_test(request):
+    return JSONResponse({"status": "SSE works"})
+
+@sse_app.route("/")
+async def sse_health(request):
+    return JSONResponse({"status": "SSE HealthCheck works"})
+
 # Create a Starlette app with root route and MCP mount
 app = Starlette(
     routes=[
