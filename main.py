@@ -17,13 +17,6 @@ async def root(request):
 def hello(name: str) -> str:
     return f"Hello, {name}!"
 
-@mcp.custom_route("/health", methods=["GET"])
-async def health_check(request: Request):
-    return JSONResponse({"status": "healthy"})
-
-# For legacy SSE transport (deprecated)
-sse_app = mcp.http_app(transport="sse")
-
 # Create a Starlette app with root route and MCP mount
 app = Starlette(
     routes=[
