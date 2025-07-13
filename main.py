@@ -1,36 +1,47 @@
-from fastapi import FastAPI
 from fastmcp import FastMCP
 from starlette.applications import Starlette
-from starlette.routing import Mount
+from starlette.responses import JSONResponse
+from starlette.routing import Mount, Route
+from starlette.requests import Request
+from starlette.responses import RedirectResponse
 
-# Step 1: Define your FastAPI app with normal routes
-fastapi_app = FastAPI(title="My API", version="1.0.0")
+# Create your FastMCP server
+mcp = FastMCP("MyServer")
 
-@fastapi_app.get("/items", tags=["items"], operation_id="list_items")
-def list_items():
-    return [{"id": 1, "name": "Item 1"}, {"id": 2, "name": "Item 2"}]
+# Create the ASGI app for MCP with SSE transport
+mcp_app = mcp.http_app(path='/mcp', transport="sse")
 
-@fastapi_app.get("/items/{item_id}", tags=["items"], operation_id="get_item")
-def get_item(item_id: int):
-    return {"id": item_id, "name": f"Item {item_id}"}
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Request):
+    return JSONResponse({"status": "healthy"})
 
-@fastapi_app.post("/items", tags=["items"], operation_id="create_item")
-def create_item(name: str):
-    return {"id": 3, "name": name}
+# Root route handler
+async def root(request):
+    return JSONResponse({"message": "FastMCP server is running"})
 
-# Step 2: Create FastMCP from FastAPI app
-mcp = FastMCP.from_fastapi(app=fastapi_app)
+# Define MCP tools
+@mcp.tool
+def hello(name: str) -> str:
+    return f"Hello, {name}!"
 
-# Step 3: Create MCP ASGI apps (REST and SSE)
-mcp_http_app = mcp.http_app()
-mcp_sse_app = mcp.http_app(transport="sse")
+@mcp.tool
+def analyze(data: str) -> dict:
+    return {"result": f"Analyzed: {data}"}
 
-# Step 4: Combine them with Starlette
+# Optional redirect to ensure trailing slash on SSE base URL
+@mcp_app.route("/mcp-sse")
+async def redirect_sse(request):
+    return RedirectResponse(url="/mcp-sse/")
+
+@mcp_app.route("/")
+async def sse_health(request):
+    return JSONResponse({"status": "SSE HealthCheck works"})
+
+# Create Starlette app with root and MCP mount
 app = Starlette(
     routes=[
-        Mount("/", app=fastapi_app),        # Your native FastAPI app
-        Mount("/mcp", app=mcp_http_app),    # REST/stream-compatible MCP
-        Mount("/mcp-sse", app=mcp_sse_app), # Explicit SSE transport
+        Route("/", endpoint=root),
+        Mount("/mcp-server", app=mcp_app),  # <-- MCP server mounted here
     ],
-    lifespan=mcp_http_app.lifespan,
+    lifespan=mcp_app.lifespan,
 )
