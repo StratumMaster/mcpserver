@@ -40,7 +40,7 @@ async def sse_health(request):
     return JSONResponse({"status": "SSE HealthCheck works"})
 
 # Define Dynamic MCP tools
-@mcp.custom_route("/reload-tools", methods=["POST"])
+@mcp.custom_route("/reload-tools", methods=["GET"])
 async def reload_tools(request: Request):
     try:
         tool_schema_url = "https://my-json-server.typicode.com/StratumMaster/samplejson/config"
