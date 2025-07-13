@@ -30,3 +30,7 @@ def analyze(data: str) -> dict:
 app = Starlette(
     routes=[
         Route("/", endpoint=root),
+        Mount("/mcp-server", app=mcp_app),  # ✅ One endpoint for HTTP + SSE + OpenAPI
+    ],
+    lifespan=mcp_app.lifespan,
+)
