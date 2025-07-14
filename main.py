@@ -40,15 +40,24 @@ async def sse_health(request):
     return JSONResponse({"status": "SSE HealthCheck works"})
 
 # Define Dynamic MCP tools
-@mcp.custom_route("/reload-tools", methods=["GET"])
-async def reload_tools(request: Request):
+@mcp_app.route("/reload-tools-get", methods=["GET"])
+async def reload_tools_get(request: Request):
     try:
         tool_schema_url = "https://my-json-server.typicode.com/StratumMaster/samplejson/config"
         await register_tools_from_remote_json_async(tool_schema_url, mcp)
         return JSONResponse({"status": "success", "message": "Tools reloaded."})
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
-    
+
+@mcp_app.route("/reload-tools-post", methods=["POST"])
+async def reload_tools_post(request: Request):
+    try:
+        tool_schema_url = "https://my-json-server.typicode.com/StratumMaster/samplejson/config"
+        await register_tools_from_remote_json_async(tool_schema_url, mcp)
+        return JSONResponse({"status": "success", "message": "Tools reloaded."})
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
 # Create Starlette app with root and MCP mount
 app = Starlette(
     routes=[
