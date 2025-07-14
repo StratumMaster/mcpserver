@@ -1,27 +1,9 @@
+import asyncio
 import httpx
 from jsonschema import validate, ValidationError
 
-def parse_value(value, type_str):
-    if type_str.endswith("?"):
-        if value is None:
-            return None
-        base_type = type_str[:-1]
-    else:
-        base_type = type_str
-
-    type_map = {
-        "string": str,
-        "int": int,
-        "integer": int,
-        "bool": lambda v: str(v).lower() in ["true", "1", "yes"],
-        "float": float
-    }
-    parser = type_map.get(base_type)
-    if parser is None:
-        raise ValueError(f"Unsupported type '{base_type}'")
-    return parser(value)
-
 async def register_tools_from_remote_json_async(tool_definitions_url: str, mcp):
+    # Fetch JSON tool definitions asynchronously
     async with httpx.AsyncClient() as client:
         response = await client.get(tool_definitions_url)
         response.raise_for_status()
@@ -35,39 +17,52 @@ async def register_tools_from_remote_json_async(tool_definitions_url: str, mcp):
         input_schema = tool.get("input_schema", {})
         output_schema = tool.get("output_schema", {})
 
-        def make_tool_fn(endpoint_url, input_schema_dict, output_schema_dict):
-            async def tool_fn(**kwargs) -> dict:
-                input_payload = {}
-                for param, param_type in input_schema_dict.items():
-                    val = kwargs.get(param)
-                    if val is None and param_type.endswith("?"):
-                        input_payload[param] = None
-                        continue
-                    if val is None:
-                        return {"error": f"Missing required parameter: {param}"}
-                    try:
-                        input_payload[param] = parse_value(val, param_type)
-                    except Exception as e:
-                        return {"error": f"Invalid value for {param}: {e}"}
+        # Build function signature string with explicit params
+        params_code = []
+        for param, typ in input_schema.items():
+            if typ.endswith("?"):
+                params_code.append(f"{param}=None")  # Optional param default None
+            else:
+                params_code.append(param)
+        params_str = ", ".join(params_code)
 
-                try:
-                    async with httpx.AsyncClient() as client:
-                        resp = await client.post(endpoint_url, json=input_payload)
-                        resp.raise_for_status()
-                        result = resp.json()
+        # Build async function code as string
+        fn_code = f"""
+import httpx
+from jsonschema import validate, ValidationError
 
-                    if output_schema_dict:
-                        try:
-                            validate(instance=result, schema=output_schema_dict)
-                        except ValidationError as e:
-                            return {"error": "Output schema validation failed", "details": str(e)}
+async def tool_fn({params_str}):
+    payload = {{}}
+"""
+        # Add parameter-to-payload logic
+        for param, typ in input_schema.items():
+            if typ.endswith("?"):
+                fn_code += f"    if {param} is not None:\n        payload['{param}'] = {param}\n"
+            else:
+                fn_code += f"    payload['{param}'] = {param}\n"
 
-                    return result
+        fn_code += f"""
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post("{endpoint}", json=payload)
+            resp.raise_for_status()
+            result = resp.json()
+        except Exception as e:
+            return {{'error': str(e)}}
 
-                except httpx.HTTPError as e:
-                    return {"error": "HTTP request failed", "details": str(e)}
+    schema = {output_schema}
+    try:
+        validate(instance=result, schema=schema)
+    except ValidationError as e:
+        return {{'error': 'Output schema validation failed', 'details': str(e)}}
 
-            return tool_fn
+    return result
+"""
 
-        tool_fn = make_tool_fn(endpoint, input_schema, output_schema)
-        mcp.tool(name=name, description=description, tags=tags)(tool_fn)
+        # Prepare exec environment and exec the function code
+        exec_env = {}
+        exec(fn_code, exec_env)
+        fn = exec_env['tool_fn']
+
+        # Register the async function with mcp.tool
+        mcp.tool(name=name, description=description, tags=tags)(fn)
